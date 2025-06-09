@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pizza Cosy Montbonnot-Saint-Martin – Roue de la Fortune</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Montserrat', sans-serif;
+    color: #3b2f2f;
+    max-width: 480px;
+    margin: 40px auto 60px;
+    padding: 0 20px;
+    text-align: center;
+    user-select: none;
+    position: relative;
+    min-height: 100vh;
+    background: url('https://cdn.pixabay.com/photo/2017/12/09/08/18/pizza-3007395_1280.jpg') no-repeat center center fixed;
+    background-size: cover;
+  }
+
+  header {
+    margin-bottom: 15px;
+  }
+  header img {
+    max-width: 140px;
+    margin: 0 auto 10px;
+    display: block;
+    filter: drop-shadow(0 0 6px rgba(0,0,0,0.5));
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 2rem;
+    color: #f9d5b3;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+    margin-bottom: 5px;
+  }
+
+  p.subtitle {
+    color: #f1c27d;
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+    font-style: italic;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+  }
+
+  main, #wheel-container, #result {
+    background: rgba(255, 248, 230, 0.85);
+    border-radius: 15px;
+    padding: 15px 20px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.3);
+  }
+
+  button {
+    margin: 15px auto;
+    padding: 14px 38px;
+    font-size: 18px;
+    background: linear-gradient(145deg, #a8351e, #ec7c3a);
+    color: white;
+    border: none;
+    border-radius: 35px;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(168, 53, 30, 0.6);
+    transition: all 0.3s;
+    display: block;
+    width: 90%;
+    max-width: 320px;
+  }
+
+  button:hover:not(:disabled) {
+    background: linear-gradient(145deg, #ec7c3a, #a8351e);
+    box-shadow: 0 8px 22px rgba(236, 124, 58, 0.8);
+  }
+
+  button:disabled {
+    background-color: #a7a7a7;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  #wheel-container {
+    margin: 35px auto 0;
+    position: relative;
+    width: 400px;
+    max-width: 100%;
+    height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #pointer {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%) rotate(0deg); /* 🔁 changé ici */
+    width: 0;
+    height: 0;
+    border-left: 25px solid transparent;
+    border-right: 25px solid transparent;
+    border-top: 40px solid #7a2b0d;
+    z-index: 10;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+  }
+
+  canvas {
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.25);
+    background: #fff5e8;
+  }
+
+  #result {
+    margin-top: 30px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2e541e;
+    min-height: 60px;
+    text-shadow: 1px 1px 2px #c2d6a4;
+    user-select: text;
+  }
+
+  @media (max-width: 480px) {
+    button {
+      font-size: 16px;
+      padding: 12px 28px;
+    }
+    #result {
+      font-size: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <h1>Pizza Cosy</h1>
+  <p class="subtitle">Montbonnot-Saint-Martin</p>
+
+  <button id="googleReviewBtn">Mettre un avis sur Google</button>
+  <button id="submitBtn" disabled>J'ai bien mis un avis, je tourne la roue</button>
+
+  <div id="wheel-container">
+    <div id="pointer"></div>
+    <canvas id="wheel" width="400" height="400"></canvas>
+  </div>
+
+  <div id="result"></div>
+</main>
+
+<script>
+  const prizes = [
+    "☕ Café offert",
+    "🍰 Dessert gratuit",
+    "🍷 Verre de vin offert",
+    "😞 Pas de chance, retentez !",
+    "🍽️ 10% sur l'addition",
+    "🥂 Apéritif maison",
+    "🍀 Chance prochaine fois",
+    "🍛 Plat du jour gratuit"
+  ];
+
+  const googleReviewBtn = document.getElementById('googleReviewBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const wheelContainer = document.getElementById('wheel-container');
+  const canvas = document.getElementById('wheel');
+  const ctx = canvas.getContext('2d');
+  const resultDiv = document.getElementById('result');
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radius = 190;
+  const arc = (2 * Math.PI) / prizes.length;
+  const colors = ['#d94e33','#f7a972','#b54024','#f2b07a','#c7471c','#e7c19a','#a83618','#f5c492'];
+
+  let startAngle = 0;
+  let isSpinning = false;
+  let hasSpun = false;
+
+  googleReviewBtn.addEventListener('click', () => {
+    window.open('https://www.google.com/search?sca_esv=a5f19cfa0813df82&sxsrf=AE3TifOUdqD6plr_RAyemAfEYy6mS1jgNw:1749500223620&q=avis+sur+pizza+cosy+montbonnot-saint-martin&uds=AOm0WdE2fekQnsyfYEw8JPYozOKzaimUga-QaLRlo8jhCiezxVldVVG7ssKHvpIqvDzUbtFfcPXNqr07HwzDhnksVizxMGDsvFTRWZQ4UK2L7wRanUI8mShx8BfaaOTmQ9yJMqa8XL9Z9jy4Vf-BKx77tVzyRuywzJW-5v0HgOFkWnYb4bd4UT1P_gvVdLj-JSxoV436lgmA&si=AMgyJEtREmoPL4P1I5IDCfuA8gybfVI2d5Uj7QMwYCZHKDZ-E5RkK4D90iZAoJnaGm6inhDZFuUknmubDeevlHgcq1hrzlkbHdos6Ui_-6eHhHr7ja2haw-CSmLce-jNUjvFE64rMMPdPOMmOgpF2gEDwiHiOwgCknXx_VJYPC6253ZSkTlijZE%3D&sa=X&ved=2ahUKEwiP2_OalOWNAxXaV6QEHc-LHIoQxKsJegQIHRAB&ictx=1&biw=1920&bih=945&dpr=1', '_blank');
+    if (!hasSpun) submitBtn.disabled = false;
+  });
+
+  function drawWrappedText(text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + ' ';
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && i > 0) {
+        lines.push(line.trim());
+        line = words[i] + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line.trim());
+
+    const totalHeight = lines.length * lineHeight;
+    let startY = y - totalHeight / 2 + lineHeight / 2;
+
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], x, startY + i * lineHeight);
+    }
+  }
+
+  function drawWheel() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < prizes.length; i++) {
+      const angle = startAngle + i * arc;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, angle, angle + arc);
+      ctx.lineTo(centerX, centerY);
+      ctx.fill();
+
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.translate(
+        centerX + Math.cos(angle + arc / 2) * 120,
+        centerY + Math.sin(angle + arc / 2) * 120
+      );
+      ctx.rotate(angle + arc / 2 + Math.PI / 2);
+      drawWrappedText(prizes[i], 0, 0, 110, 18);
+      ctx.restore();
+    }
+
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
+    ctx.fillStyle = '#7a2b0d';
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 20px Playfair Display, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tournez !', centerX, centerY + 8);
+  }
+
+  function easeOut(t, b, c, d) {
+    const ts = (t /= d) * t;
+    const tc = ts * t;
+    return b + c * (tc + -3 * ts + 3 * t);
+  }
+
+  function spinWheel() {
+    if (isSpinning) return;
+    isSpinning = true;
+    resultDiv.textContent = '';
+    submitBtn.disabled = true;
+    googleReviewBtn.disabled = true;
+
+    wheelContainer.style.display = 'flex';
+
+    const spinTimeTotal = Math.random() * 3000 + 4000;
+    let spinTime = 0;
+    const spinAngleStart = Math.random() * 10 + 15;
+
+    function rotate() {
+      spinTime += 30;
+      if (spinTime >= spinTimeTotal) {
+        stopRotateWheel();
+        return;
+      }
+      const spinAngle = easeOut(spinTime, spinAngleStart, -spinAngleStart, spinTimeTotal);
+      startAngle += (spinAngle * Math.PI) / 180;
+      drawWheel();
+      setTimeout(rotate, 30);
+    }
+    rotate();
+  }
+
+  function stopRotateWheel() {
+    isSpinning = false;
+    hasSpun = true;
+
+    let degrees = (startAngle * 180) / Math.PI;
+    degrees = ((degrees % 360) + 360) % 360;
+
+    const pointerAngle = 270;
+    const segmentAngleDeg = 360 / prizes.length;
+    let relativeAngle = (pointerAngle - degrees + 360) % 360;
+    let index = Math.floor(relativeAngle / segmentAngleDeg);
+
+    resultDiv.textContent = "🎉 Vous avez gagné : " + prizes[index];
+  }
+
+  submitBtn.addEventListener('click', () => {
+    if (!submitBtn.disabled && !hasSpun) {
+      spinWheel();
+    }
+  });
+
+  drawWheel();
+</script>
+
+</body>
+</html>
